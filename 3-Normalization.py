@@ -22,19 +22,42 @@ class BatchNorm(nn.Module):
         
         if training:
             dims = (0,) + tuple(range(2, x.dim()))   
-            mean = x.mean(dim=dims)
-            var = x.var(dim=dims, unbiased=False)
+            mean = x.mean(dim=dims, keepdim=True)
+            var = x.var(dim=dims, keepdim=True)
             
-            self.running_mean.mul_(1 - self.momentum).add_(mean.detach() * self.momentum)
-            self.running_var.mul_(1 - self.momentum).add_(var.detach() * self.momentum)
+            self.running_mean.mul_(1 - self.momentum).add_(mean.squeeze().detach() * self.momentum)
+            self.running_var.mul_(1 - self.momentum).add_(var.squeeze().detach() * self.momentum)
         else:
             mean = self.running_mean()
             var = self.running_var()
             
-        x_normalized = ((x - mean[None,:,None,None]) if x.dim() == 4 else (x - mean[None, :])) /  \
-        (torch.sqrt(var[None, :, None, None] + self.eps) if x.dim() == 4 else torch.sqrt(var[None, :] + self.eps))
+        x_normalized = (x - mean) / torch.sqrt(var + self.eps)
+        if x.dim() == 4:
+            x_normalized = self.gamma.view(1, x.shape[1], 1, 1) * x_normalized + self.beta.view(1, x.shape[1], 1, 1)
+        else:
+            x_normalized = self.gamma.view(1, x.shape[1]) * x_normalized + self.beta.view(1, x.shape[1])
         
-        x_normalized = self.gamma[None,:,None,None] * x_normalized + self.beta[None,:,None,None] if x.dim() == 4 else self.gamma[None,:] * x_normalized + self.beta[None,:]
+        return x_normalized
+    
+class LayerNorm(nn.Module):
+    def __init__(self, normalized_shape, eps=1e-5, momentum=0.1):
+        super(LayerNorm, self).__init__()
+        self.num_features = normalized_shape
+        self.eps = eps
+        self.momentum = momentum
+        
+        self.gamma = nn.Parameter(torch.ones(normalized_shape))
+        self.beta = nn.Parameter(torch.zeros(normalized_shape))
+
+    def forward(self, x: torch.tensor, training=True):
+        # x的形状: (batch_size, num_features, ...) 对于卷积层
+        # 或 (batch_size, num_features) 对于全连接层
+        
+        dims = tuple(range(1, x.dim()))   
+        mean = x.mean(dim=dims,keepdim=True)
+        var = x.var(dim=dims,keepdim=True)
+        x_normalized = (x - mean) / torch.sqrt(var + self.eps)
+        x_normalized = self.gamma * x_normalized + self.beta
         
         return x_normalized
     
@@ -58,20 +81,20 @@ if __name__ == "__main__":
     print(f"自定义实现输出形状: {out_custom.shape}")
     print(f"PyTorch内置实现输出形状: {out_torch.shape}")
     
-    # # 测试LayerNormalization
-    # print("\n测试LayerNormalization:")
-    # layer_norm_custom = LayerNormalization(normalized_shape=5)
-    # layer_norm_torch = nn.LayerNorm(normalized_shape=5)
+    # 测试LayerNormalization
+    print("\n测试LayerNormalization:")
+    layer_norm_custom = LayerNorm(normalized_shape=5)
+    layer_norm_torch = nn.LayerNorm(normalized_shape=5)
     
-    # # 使用相同的输入
-    # x = torch.randn(2, 3, 5)  # 随机输入 (batch_size=2, seq_len=3, features=5)
+    # 使用相同的输入
+    x = torch.randn(2, 3, 5)  # 随机输入 (batch_size=2, seq_len=3, features=5)
     
-    # # 前向传播
-    # out_custom = layer_norm_custom(x)
-    # out_torch = layer_norm_torch(x)
+    # 前向传播
+    out_custom = layer_norm_custom(x)
+    out_torch = layer_norm_torch(x)
     
-    # print(f"自定义实现输出形状: {out_custom.shape}")
-    # print(f"PyTorch内置实现输出形状: {out_torch.shape}")
+    print(f"自定义实现输出形状: {out_custom.shape}")
+    print(f"PyTorch内置实现输出形状: {out_torch.shape}")
 # https://www.doubao.com/thread/w3a24bd2b7b7cbf54
 
 

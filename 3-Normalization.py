@@ -95,6 +95,6 @@ if __name__ == "__main__":
     
     print(f"自定义实现输出形状: {out_custom.shape}")
     print(f"PyTorch内置实现输出形状: {out_torch.shape}")
-# https://www.doubao.com/thread/w3a24bd2b7b7cbf54
+# https://www.doubao.com/thread/w663b8ab9b3b11680
 
 

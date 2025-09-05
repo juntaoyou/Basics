@@ -194,3 +194,5 @@ if __name__ == "__main__":
     print(f"Decoder output shape: {dec_output.shape}")  # 应输出 torch.Size([32, 15, 512])
     print(f"Decoder self-attention shape: {dec_self_attn.shape}")  # 应输出 torch.Size([32, 8, 15, 15])
     print(f"Decoder cross-attention shape: {dec_cross_attn.shape}")  # 应输出 torch.Size([32, 8, 15, 10])
+
+# https://www.doubao.com/thread/w1ecfb532fb3519fd
